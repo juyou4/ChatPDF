@@ -1,97 +1,43 @@
 @echo off
-chcp 65001 >nul
-echo ========================================
-echo   ChatPDF - 一键启动（完整版）
-echo ========================================
-echo.
-echo 包含所有功能：
-echo   ✅ PDF文本对话
-echo   ✅ 向量检索
-echo   ✅ 流式响应
-echo   ✅ 表格提取
-echo   ✅ 📸 整页截图
-echo   ✅ 📸 区域截图
-echo   ✅ 📸 AI视觉分析
-echo.
+setlocal enabledelayedexpansion
 
-REM 检查环境
-echo 检查环境...
-where python >nul 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo ❌ 未找到Python，请先安装: https://www.python.org/downloads/
+echo ===================================================
+echo           ChatPDF Pro - 一键启动脚本
+echo ===================================================
+
+:: 检查 Python
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] 未找到 Python，请先安装 Python 3.8+
     pause
-    exit /b 1
+    exit /b
 )
 
-where node >nul 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo ❌ 未找到Node.js，请先安装: https://nodejs.org/
+echo [1/4] 检查并安装后端依赖...
+pip install -r backend/requirements.txt
+if %errorlevel% neq 0 (
+    echo [ERROR] 后端依赖安装失败
     pause
-    exit /b 1
+    exit /b
 )
 
-echo ✅ 环境检查通过
-echo.
+echo [2/4] 启动后端服务...
+start "ChatPDF Backend" cmd /k "python backend/app.py"
 
-REM 启动后端
-echo ========================================
-echo 🚀 启动后端服务...
-echo ========================================
-cd backend
-
-if not exist "venv" (
-    echo 📦 首次运行，创建虚拟环境...
-    python -m venv venv
-)
-
-call venv\Scripts\activate.bat
-
-echo 📥 安装/更新依赖...
-pip install -r requirements.txt
-
-echo ✨ 启动后端...
-start "ChatPDF Backend" cmd /k "venv\Scripts\activate.bat && python app.py"
-
-cd ..
-timeout /t 3 >nul
-
-REM 启动前端
-echo.
-echo ========================================
-echo 🎨 启动前端服务...
-echo ========================================
+echo [3/4] 检查前端依赖...
 cd frontend
-
 if not exist "node_modules" (
-    echo 📦 首次运行，安装依赖（需要几分钟）...
+    echo 首次运行，正在安装前端依赖...
     call npm install
 )
 
-REM 确保html2canvas已安装
-npm list html2canvas >nul 2>nul
-if errorlevel 1 (
-    echo 📥 安装截图功能依赖...
-    npm install html2canvas
-)
+echo [4/4] 启动前端界面...
+echo.
+echo 服务已启动！
+echo - 后端运行在: http://127.0.0.1:8000
+echo - 前端运行在: http://localhost:3000
+echo.
+echo 请勿关闭弹出的后端窗口。
+echo 按任意键退出此窗口（服务将继续运行）...
 
-echo ✨ 启动前端...
-start "ChatPDF Frontend" cmd /k "npm run dev"
-
-cd ..
-
-echo.
-echo ========================================
-echo ✅ ChatPDF 启动成功！
-echo ========================================
-echo.
-echo 🌐 后端API:  http://localhost:8000
-echo 📚 API文档:  http://localhost:8000/docs
-echo 🎨 前端界面: http://localhost:3000
-echo.
-echo 💡 提示:
-echo    - 前端会自动在浏览器中打开
-echo    - 首次运行请在设置中配置API Key
-echo    - 截图功能需选择支持视觉的模型（标有📸）
-echo    - 关闭窗口将停止服务
-echo.
-pause
+npm run dev
