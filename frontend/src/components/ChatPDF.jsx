@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Send, FileText, Sparkles, MessageCircle, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Copy, Bot, X, Camera, Crop, Image as ImageIcon } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
-const ChatPDFWithScreenshot = () => {
+const ChatPDF = () => {
   const [docId, setDocId] = useState(null);
   const [docInfo, setDocInfo] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -904,4 +904,4 @@ const ChatPDFWithScreenshot = () => {
   );
 };
 
-export default ChatPDFWithScreenshot;
+export default ChatPDF;

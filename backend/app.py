@@ -643,6 +643,11 @@ async def generate_summary(request: SummaryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"摘要生成失败: {str(e)}")
 
+@app.get("/models")
+async def get_models():
+    """获取所有可用的AI模型配置"""
+    return AI_MODELS
+
 @app.get("/health")
 async def health_check():
     """健康检查"""
