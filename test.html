@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatPDF API 测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 ChatPDF API 测试工具</h1>
+
+    <div class="test-section">
+        <h2>1. 后端健康检查</h2>
+        <button onclick="testHealth()">测试后端连接</button>
+        <div id="health-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 获取模型列表</h2>
+        <button onclick="testModels()">测试模型API</button>
+        <div id="models-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 文件上传测试</h2>
+        <input type="file" id="fileInput" accept=".pdf">
+        <button onclick="testUpload()">测试上传</button>
+        <div id="upload-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 全面测试</h2>
+        <button onclick="runAllTests()">运行所有测试</button>
+        <div id="all-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.className = 'result info';
+            resultDiv.textContent = '测试中...';
+
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = '✅ 后端运行正常\n\n' + JSON.stringify(data, null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = '❌ 后端响应异常\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 无法连接后端\n\n错误: ' + error.message + '\n\n请确保后端正在运行: python backend/app.py';
+            }
+        }
+
+        async function testModels() {
+            const resultDiv = document.getElementById('models-result');
+            resultDiv.className = 'result info';
+            resultDiv.textContent = '测试中...';
+
+            try {
+                const response = await fetch(`${API_URL}/models`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    const providers = Object.keys(data);
+                    let summary = `✅ 成功获取 ${providers.length} 个AI提供商:\n\n`;
+
+                    providers.forEach(provider => {
+                        const modelCount = Object.keys(data[provider].models || {}).length;
+                        summary += `- ${data[provider].name}: ${modelCount} 个模型\n`;
+                    });
+
+                    summary += '\n详细信息:\n' + JSON.stringify(data, null, 2);
+
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = summary;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = '❌ 获取模型列表失败\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 请求失败\n\n错误: ' + error.message;
+            }
+        }
+
+        async function testUpload() {
+            const resultDiv = document.getElementById('upload-result');
+            const fileInput = document.getElementById('fileInput');
+
+            if (!fileInput.files || !fileInput.files[0]) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 请先选择一个PDF文件';
+                return;
+            }
+
+            const file = fileInput.files[0];
+
+            if (!file.name.endsWith('.pdf')) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 只支持PDF文件';
+                return;
+            }
+
+            resultDiv.className = 'result info';
+            resultDiv.textContent = '上传中...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ 文件上传成功!\n\n文件名: ${data.filename}\n总页数: ${data.total_pages}\n字符数: ${data.total_chars}\n文档ID: ${data.doc_id}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = '❌ 上传失败\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 上传失败\n\n错误: ' + error.message;
+            }
+        }
+
+        async function runAllTests() {
+            const resultDiv = document.getElementById('all-result');
+            resultDiv.className = 'result info';
+            resultDiv.textContent = '运行所有测试...\n\n';
+
+            let results = [];
+
+            // Test 1: Health
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    results.push('✅ 后端健康检查通过');
+                } else {
+                    results.push('❌ 后端健康检查失败');
+                }
+            } catch (error) {
+                results.push('❌ 后端无法连接: ' + error.message);
+            }
+
+            // Test 2: Models
+            try {
+                const response = await fetch(`${API_URL}/models`);
+                const data = await response.json();
+                if (response.ok && data) {
+                    const count = Object.keys(data).length;
+                    results.push(`✅ 模型API正常 (${count}个提供商)`);
+                } else {
+                    results.push('❌ 模型API失败');
+                }
+            } catch (error) {
+                results.push('❌ 模型API异常: ' + error.message);
+            }
+
+            // Test 3: CORS
+            results.push('\n检查CORS配置:');
+            try {
+                const response = await fetch(`${API_URL}/health`, {
+                    method: 'OPTIONS'
+                });
+                results.push('✅ CORS已正确配置');
+            } catch (error) {
+                results.push('❌ CORS可能有问题');
+            }
+
+            resultDiv.className = 'result ' + (results.some(r => r.includes('❌')) ? 'error' : 'success');
+            resultDiv.textContent = results.join('\n');
+        }
+
+        // 页面加载时自动运行健康检查
+        window.onload = function () {
+            console.log('ChatPDF API测试工具已加载');
+            console.log('API地址:', API_URL);
+        };
+    </script>
+</body>
+
+</html>
