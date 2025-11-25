@@ -484,8 +484,8 @@ const ChatPDF = () => {
               <div className="h-14 border-b border-black/5 flex items-center justify-between px-6 bg-white/30 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
                   <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className="p-1.5 hover:bg-black/5 rounded-lg"><ChevronLeft className="w-5 h-5" /></button>
-                  <span className="text-sm font-medium w-16 text-center">{currentPage} / {docInfo?.total_pages || 1}</span>
-                  <button onClick={() => setCurrentPage(Math.min(docInfo?.total_pages || 1, currentPage + 1))} className="p-1.5 hover:bg-black/5 rounded-lg"><ChevronRight className="w-5 h-5" /></button>
+                  <span className="text-sm font-medium w-16 text-center">{currentPage} / {docInfo?.total_pages || docInfo?.data?.total_pages || 1}</span>
+                  <button onClick={() => setCurrentPage(Math.min(docInfo?.total_pages || docInfo?.data?.total_pages || 1, currentPage + 1))} className="p-1.5 hover:bg-black/5 rounded-lg"><ChevronRight className="w-5 h-5" /></button>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setPdfScale(s => Math.max(0.5, s - 0.1))} className="p-1.5 hover:bg-black/5 rounded-lg"><ZoomOut className="w-5 h-5" /></button>
@@ -506,7 +506,7 @@ const ChatPDF = () => {
                     pdfUrl={docInfo.pdf_url}
                     onTextSelect={(text) => setSelectedText(text)}
                   />
-                ) : docInfo?.pages ? (
+                ) : (docInfo?.pages || docInfo?.data?.pages) ? (
                   <div ref={pdfContainerRef} className="h-full overflow-auto p-8 flex justify-center bg-gray-50/50">
                     <div
                       className="bg-white shadow-2xl p-12 rounded-lg max-w-4xl"
@@ -514,7 +514,7 @@ const ChatPDF = () => {
                       onMouseUp={handleTextSelection}
                     >
                       <pre className="whitespace-pre-wrap font-serif text-gray-800 leading-relaxed">
-                        {docInfo.pages[currentPage - 1]?.content || 'No content'}
+                        {(docInfo.pages || docInfo.data?.pages)?.[currentPage - 1]?.content || 'No content'}
                       </pre>
                     </div>
                   </div>
