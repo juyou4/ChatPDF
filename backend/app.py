@@ -5,6 +5,7 @@ ChatPDF Pro - 支持截图功能的后端API
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import PyPDF2
@@ -481,6 +482,57 @@ async def chat_with_pdf(request: ChatRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI调用失败: {str(e)}")
+
+@app.post("/chat/stream")
+async def chat_with_pdf_stream(request: ChatRequest):
+    """与PDF文档对话（SSE流式响应）"""
+    if request.doc_id not in documents_store:
+        raise HTTPException(status_code=404, detail="文档未找到")
+    
+    doc = documents_store[request.doc_id]
+    
+    # 构建上下文
+    context = ""
+    if request.selected_text:
+        context = f"用户选中的文本：\n{request.selected_text}\n\n"
+    else:
+        context = doc["data"]["full_text"][:8000]
+    
+    system_prompt = f"""你是专业的文档分析助手。用户上传了一份PDF文档。
+
+文档名称：{doc["filename"]}
+文档总页数：{doc["data"]["total_pages"]}
+
+文档内容：
+{context}
+
+请根据文档内容准确回答用户的问题。如果文档中没有相关信息，请明确告知。"""
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": request.question}
+    ]
+    
+    async def event_generator():
+        try:
+            response = await call_ai_api(messages, request.api_key, request.model, request.api_provider)
+            answer = response["choices"][0]["message"]["content"]
+            
+            # 按单词流式发送
+            words = answer.split(' ')
+            for i, word in enumerate(words):
+                chunk = word if i == 0 else f" {word}"
+                yield f"data: {json.dumps({'content': chunk, 'done': False})}\n\n"
+            
+            # 发送完成标记
+            yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 @app.post("/chat/vision")
 async def chat_with_vision(request: ChatVisionRequest):
