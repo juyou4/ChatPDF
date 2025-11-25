@@ -155,74 +155,72 @@ const ChatPDF = () => {
     setInputMessage('');
     setIsLoading(true);
 
+    const requestBody = {
+      doc_id: docId,
+      question: userMsg.content,
+      api_key: apiKey,
+      model: model,
+      api_provider: apiProvider,
+      selected_text: selectedText || null,
+      image_base64: screenshot ? screenshot.split(',')[1] : null
+    };
+
+    // Add placeholder message for streaming effect
+    const tempMsgId = Date.now();
+    setStreamingMessageId(tempMsgId);
+    setMessages(prev => [...prev, {
+      id: tempMsgId,
+      type: 'assistant',
+      content: '',
+      model: model,
+      isStreaming: true
+    }]);
+
     try {
-      const requestBody = {
-        doc_id: docId,
-        question: userMsg.content,
-        api_key: apiKey,
-        model: model,
-        api_provider: apiProvider,
-        selected_text: selectedText || null,
-        image_base64: screenshot ? screenshot.split(',')[1] : null
-      };
+      // Use SSE streaming if enabled and no screenshot
+      if (streamSpeed !== 'off' && !screenshot) {
+        const response = await fetch(`${API_BASE_URL}/chat/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
 
-      const endpoint = screenshot ? '/chat/vision' : '/chat';
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
+        if (!response.ok) throw new Error('Failed to get response');
 
-      if (!response.ok) throw new Error('Failed to get response');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let currentText = '';
 
-      const data = await response.json();
-      const fullAnswer = data.answer;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
 
-      // Add placeholder message for streaming effect
-      const tempMsgId = Date.now();
-      setStreamingMessageId(tempMsgId);
-      setMessages(prev => [...prev, {
-        id: tempMsgId,
-        type: 'assistant',
-        content: '',
-        model: model,
-        isStreaming: true
-      }]);
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
 
-      // Simulate streaming with enhanced typewriter effect (word by word)
-      const words = fullAnswer.split(' ');
-      let currentText = '';
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') break;
 
-      // Speed configuration
-      const speedConfig = {
-        fast: { baseDelay: 10, variation: 10 },
-        normal: { baseDelay: 20, variation: 20 },
-        slow: { baseDelay: 40, variation: 30 },
-        off: { baseDelay: 0, variation: 0 }
-      };
-
-      const { baseDelay, variation } = speedConfig[streamSpeed] || speedConfig.normal;
-
-      // If streaming is off, show entire message immediately
-      if (streamSpeed === 'off') {
-        setMessages(prev => prev.map(msg =>
-          msg.id === tempMsgId
-            ? { ...msg, content: fullAnswer, isStreaming: false }
-            : msg
-        ));
-        setStreamingMessageId(null);
-      } else {
-        // Stream word by word with configured speed
-        for (let i = 0; i < words.length; i++) {
-          currentText += (i > 0 ? ' ' : '') + words[i];
-          const delay = baseDelay + Math.random() * variation;
-          await new Promise(resolve => setTimeout(resolve, delay));
-
-          setMessages(prev => prev.map(msg =>
-            msg.id === tempMsgId
-              ? { ...msg, content: currentText }
-              : msg
-          ));
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
+                if (!parsed.done) {
+                  currentText += parsed.content;
+                  setMessages(prev => prev.map(msg =>
+                    msg.id === tempMsgId
+                      ? { ...msg, content: currentText }
+                      : msg
+                  ));
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
         }
 
         // Mark streaming complete
@@ -232,6 +230,61 @@ const ChatPDF = () => {
             : msg
         ));
         setStreamingMessageId(null);
+      } else {
+        // Fallback to regular fetch for non-streaming or vision requests
+        const endpoint = screenshot ? '/chat/vision' : '/chat';
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) throw new Error('Failed to get response');
+
+        const data = await response.json();
+        const fullAnswer = data.answer;
+
+        if (streamSpeed === 'off') {
+          // Show entire message immediately
+          setMessages(prev => prev.map(msg =>
+            msg.id === tempMsgId
+              ? { ...msg, content: fullAnswer, isStreaming: false }
+              : msg
+          ));
+          setStreamingMessageId(null);
+        } else {
+          // Client-side streaming effect
+          const words = fullAnswer.split(' ');
+          let currentText = '';
+
+          const speedConfig = {
+            fast: { baseDelay: 10, variation: 10 },
+            normal: { baseDelay: 20, variation: 20 },
+            slow: { baseDelay: 40, variation: 30 }
+          };
+
+          const { baseDelay, variation } = speedConfig[streamSpeed] || speedConfig.normal;
+
+          for (let i = 0; i < words.length; i++) {
+            currentText += (i > 0 ? ' ' : '') + words[i];
+            const delay = baseDelay + Math.random() * variation;
+            await new Promise(resolve => setTimeout(resolve, delay));
+
+            setMessages(prev => prev.map(msg =>
+              msg.id === tempMsgId
+                ? { ...msg, content: currentText }
+                : msg
+            ));
+          }
+
+          // Mark streaming complete
+          setMessages(prev => prev.map(msg =>
+            msg.id === tempMsgId
+              ? { ...msg, isStreaming: false }
+              : msg
+          ));
+          setStreamingMessageId(null);
+        }
       }
 
       setScreenshot(null); // Clear screenshot after sending
