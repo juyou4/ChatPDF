@@ -122,8 +122,13 @@ const ChatPDF = () => {
 
       // Load full document content with pages
       console.log('🔵 Fetching document details for:', data.doc_id);
-      const docResponse = await fetch(`${API_BASE_URL}/document/${data.doc_id}`);
-      const fullDocData = await docResponse.json();
+      // Add timestamp to prevent browser caching of the GET request
+      const docResponse = await fetch(`${API_BASE_URL}/document/${data.doc_id}?t=${new Date().getTime()}`);
+      const docData = await docResponse.json();
+
+      // Merge data from upload response (which might be fresher) with document data
+      const fullDocData = { ...docData, ...data };
+
       console.log('🟢 Document data received:', fullDocData);
 
       // Debug alert to check PDF URL
@@ -131,7 +136,7 @@ const ChatPDF = () => {
         console.log('✅ PDF URL found:', fullDocData.pdf_url);
       } else {
         console.warn('⚠️ No PDF URL found in document data');
-        alert('调试信息: 后端未返回 PDF URL。请确认后端服务已重启 (python backend/app.py)');
+        alert(`调试信息: 未找到 PDF URL (DocID: ${data.doc_id})\n请尝试修改文件名后重新上传，或清除浏览器缓存。`);
       }
 
       console.log('🟢 Pages structure:', fullDocData.pages);
