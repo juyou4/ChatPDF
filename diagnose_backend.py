@@ -58,14 +58,11 @@ def check_backend_health():
 
 def test_upload():
     """测试上传功能"""
-    if not os.path.exists(TEST_PDF_PATH):
-        try:
-            import reportlab
-            create_dummy_pdf()
-        except ImportError:
-            print("⚠️ reportlab not installed, creating empty file pretending to be PDF")
-            with open(TEST_PDF_PATH, "wb") as f:
-                f.write(b"%PDF-1.4\n%EOF")
+    # 总是重新创建 PDF 以确保有效
+    if os.path.exists(TEST_PDF_PATH):
+        os.remove(TEST_PDF_PATH)
+    
+    create_dummy_pdf()
     
     print(f"📤 Uploading {TEST_PDF_PATH}...")
     
