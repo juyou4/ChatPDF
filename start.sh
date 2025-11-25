@@ -19,6 +19,14 @@ fi
 # ==================== 后端检查与启动 ====================
 echo -e "${BLUE}📦 检查后端依赖...${NC}"
 
+# 清理端口 8000（如果被占用）
+echo "检查端口 8000..."
+if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+    echo "端口 8000 被占用，正在清理..."
+    lsof -ti :8000 | xargs kill -9 2>/dev/null
+    sleep 1
+fi
+
 # 检查是否安装了 python3
 if ! command -v python3 &> /dev/null; then
     echo "❌ 未找到 python3，请先安装 Python 3"
