@@ -9,6 +9,9 @@ import rehypeHighlight from 'rehype-highlight';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
 
+// API base URL – empty string so that Vite proxy forwards to backend
+const API_BASE_URL = '';
+
 const ChatPDF = () => {
   // Core State
   const [docId, setDocId] = useState(null);
