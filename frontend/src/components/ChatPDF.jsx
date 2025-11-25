@@ -136,7 +136,8 @@ const ChatPDF = () => {
         console.log('✅ PDF URL found:', fullDocData.pdf_url);
       } else {
         console.warn('⚠️ No PDF URL found in document data');
-        alert(`调试信息: 未找到 PDF URL (DocID: ${data.doc_id})\n请尝试修改文件名后重新上传，或清除浏览器缓存。`);
+        const keys = Object.keys(fullDocData).join(', ');
+        alert(`调试信息 (v2.0.2):\n未找到 PDF URL\n\n返回字段: ${keys}\n\n请截图此弹窗发给我！`);
       }
 
       console.log('🟢 Pages structure:', fullDocData.pages);
@@ -495,14 +496,25 @@ const ChatPDF = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full relative">
         {/* Header */}
-        <div className="h-16 flex items-center px-6 justify-between z-10" style={{ marginTop: updateAvailable ? '60px' : '0' }}>
-          <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 hover:bg-black/5 rounded-lg transition-colors">
-            <Menu className="w-6 h-6" />
-          </button>
+        <header className="flex items-center justify-between px-8 py-5 bg-white/80 backdrop-blur-md border-b border-white/20 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-2.5 rounded-xl shadow-lg shadow-blue-200">
+              <FileText className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">
+                ChatPDF Pro <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v2.0.2</span>
+              </h1>
+              <p className="text-xs text-gray-500 font-medium mt-0.5">智能文档助手</p>
+            </div>
+          </div>
           {docInfo && <div className="font-medium text-sm glass-panel px-4 py-1 rounded-full">{docInfo.filename}</div>}
-          <div className="w-10"></div> {/* Spacer */}
-        </div>
-
+          <div className="flex items-center gap-4">
+            <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 hover:bg-black/5 rounded-lg transition-colors">
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
+        </header>
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden p-6 gap-0 pt-0">
 
