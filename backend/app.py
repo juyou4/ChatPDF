@@ -6,10 +6,12 @@ ChatPDF Pro - 支持截图功能的后端API
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 import PyPDF2
 import io
+import os
 import hashlib
 from datetime import datetime
 import httpx
@@ -25,6 +27,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create uploads directory if it doesn't exist
+os.makedirs("uploads", exist_ok=True)
+
+# Mount static files for serving PDFs
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 documents_store = {}
 
@@ -762,14 +770,24 @@ async def upload_pdf(file: UploadFile = File(...)):
         # 生成文档ID
         doc_id = generate_doc_id(file.filename)
         
-        # 存储文档
+        # 保存PDF文件到磁盘
+        pdf_filename = f"{doc_id}.pdf"
+        pdf_path = os.path.join("uploads", pdf_filename)
+        with open(pdf_path, "wb") as f:
+            f.write(content)
+        
+        # 生成PDF访问URL
+        pdf_url = f"/uploads/{pdf_filename}"
+        
+        # 存储文档（包含pdf_url）
         documents_store[doc_id] = {
             "filename": file.filename,
             "content": text,
             "pages": pages,
             "total_pages": len(pages),
             "upload_time": datetime.now().isoformat(),
-            "doc_id": doc_id
+            "doc_id": doc_id,
+            "pdf_url": pdf_url
         }
         
         return {
@@ -777,6 +795,7 @@ async def upload_pdf(file: UploadFile = File(...)):
             "doc_id": doc_id,
             "filename": file.filename,
             "total_pages": len(pages),
+            "pdf_url": pdf_url,
             "preview": text[:500] + "..." if len(text) > 500 else text
         }
     
