@@ -111,10 +111,11 @@ const ChatPDF = () => {
 
       const data = await response.json();
       setDocId(data.doc_id);
-      setDocInfo(data);
 
-      // Load document content
-      await loadDocumentContent(data.doc_id);
+      // Load full document content with pages
+      const docResponse = await fetch(`${API_BASE_URL}/document/${data.doc_id}`);
+      const fullDocData = await docResponse.json();
+      setDocInfo(fullDocData);
 
       setMessages([{
         type: 'system',
@@ -182,13 +183,14 @@ const ChatPDF = () => {
         isStreaming: true
       }]);
 
-      // Simulate streaming with typewriter effect
-      const words = fullAnswer.split('');
+      // Simulate streaming with enhanced typewriter effect (word by word)
+      const words = fullAnswer.split(' ');
       let currentText = '';
 
       for (let i = 0; i < words.length; i++) {
-        currentText += words[i];
-        await new Promise(resolve => setTimeout(resolve, 10)); // 10ms per character
+        currentText += (i > 0 ? ' ' : '') + words[i];
+        const delay = words[i].length * 15 + Math.random() * 30; // Variable speed based on word length
+        await new Promise(resolve => setTimeout(resolve, delay));
 
         setMessages(prev => prev.map(msg =>
           msg.id === tempMsgId
@@ -220,7 +222,9 @@ const ChatPDF = () => {
   const loadDocumentContent = async (id) => {
     try {
       const response = await fetch(`${API_BASE_URL}/document/${id}`);
+      if (!response.ok) throw new Error('Failed to load document');
       const data = await response.json();
+      console.log('Loaded document data:', data); // Debug
       setDocInfo(data);
     } catch (error) {
       console.error('Failed to load document:', error);
@@ -518,6 +522,7 @@ const ChatPDF = () => {
                         {msg.content}
                       </ReactMarkdown>
                     </div>
+                    {msg.model && <div className="text-xs text-gray-400 mt-2">Model: {msg.model}</div>}
                   </div>
                 </motion.div>
               ))}
